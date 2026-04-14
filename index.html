@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Keyword Position Checker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --border: #1f2d45;
+      --accent: #00d4ff;
+      --accent2: #7c3aed;
+      --green: #10b981;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --font-head: 'Syne', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-head);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 20px 80px;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 48px;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,212,255,0.08);
+      border: 1px solid rgba(0,212,255,0.2);
+      color: var(--accent);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 100px;
+      margin-bottom: 18px;
+    }
+
+    .badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s infinite;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #ffffff 30%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 400;
+      font-family: var(--font-mono);
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 24px;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .card:nth-child(2) { animation-delay: 0.1s; }
+    .card:nth-child(3) { animation-delay: 0.2s; }
+
+    .card-title {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Form Elements */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    input[type="text"], input[type="url"], textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input[type="text"]:focus, input[type="url"]:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,212,255,0.1);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 110px;
+    }
+
+    ::placeholder { color: var(--muted); opacity: 0.6; }
+
+    /* Grid layout for inputs */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 580px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    /* Note box */
+    .note {
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.25);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 13px;
+      font-family: var(--font-mono);
+      color: var(--yellow);
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+
+    /* Button */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 28px;
+      border-radius: 10px;
+      font-family: var(--font-head);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #0099cc);
+      color: #000;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(0,212,255,0.3);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-sm {
+      padding: 7px 14px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 7px;
+    }
+
+    .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Spinner */
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(0,0,0,0.3);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* Results */
+    #results-section { display: none; }
+    #results-section.show { display: block; animation: fadeUp 0.4s ease; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .stat-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .color-green { color: var(--green); }
+    .color-red { color: var(--red); }
+    .color-yellow { color: var(--yellow); }
+    .color-accent { color: var(--accent); }
+
+    /* Results table */
+    .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    thead {
+      background: var(--surface2);
+    }
+
+    th {
+      padding: 12px 16px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 13px 16px;
+      font-size: 14px;
+      border-top: 1px solid var(--border);
+      font-family: var(--font-mono);
+    }
+
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .rank-top3 { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+    .rank-top10 { background: rgba(0,212,255,0.10); color: var(--accent); border: 1px solid rgba(0,212,255,0.2); }
+    .rank-top30 { background: rgba(245,158,11,0.10); color: var(--yellow); border: 1px solid rgba(245,158,11,0.2); }
+    .rank-low { background: rgba(239,68,68,0.10); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+    .rank-na { background: rgba(100,116,139,0.15); color: var(--muted); border: 1px solid var(--border); }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .pill-green { background: rgba(16,185,129,0.12); color: var(--green); }
+    .pill-red   { background: rgba(239,68,68,0.12); color: var(--red); }
+    .pill-yellow { background: rgba(245,158,11,0.12); color: var(--yellow); }
+
+    .kw-cell { font-weight: 600; color: var(--text); }
+    .url-cell { color: var(--muted); font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Export row */
+    .action-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    /* Progress bar */
+    .progress-wrap { margin-bottom: 8px; }
+    .progress-label { font-size: 12px; font-family: var(--font-mono); color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+    .progress-bar { height: 4px; background: var(--border); border-radius: 100px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 100px; transition: width 0.4s ease; }
+
+    /* How it works */
+    .how-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 16px;
+    }
+
+    .how-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 16px;
+      text-align: center;
+    }
+
+    .how-icon {
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+
+    .how-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .how-desc {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      margin-top: 48px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+    }
+
+    .footer a { color: var(--accent); text-decoration: none; }
+
+    /* Animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* Tooltip */
+    [data-tip] { position: relative; cursor: help; }
+    [data-tip]::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      font-family: var(--font-mono);
+      z-index: 10;
+    }
+    [data-tip]:hover::after { opacity: 1; }
+
+    /* Error */
+    .error-box {
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 13px;
+      font-family: var(--font-mono);
+      color: var(--red);
+      display: none;
+    }
+
+    .error-box.show { display: block; animation: fadeUp 0.3s ease; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="badge">SEO Tool</div>
+    <h1>Keyword Position<br/>Checker</h1>
+    <p class="subtitle">// Simulate & analyze SERP rankings for your target keywords</p>
+  </div>
+
+  <!-- Input Card -->
+  <div class="card">
+    <div class="card-title">🔍 Configuration</div>
+
+    <div class="form-group">
+      <label>Target URL / Domain</label>
+      <input type="url" id="targetUrl" placeholder="https://yourwebsite.com" />
+    </div>
+
+    <div class="form-group">
+      <label>Keywords <span style="color:var(--muted)">(one per line, max 20)</span></label>
+      <textarea id="keywords" placeholder="digital marketing&#10;seo tools&#10;keyword rank checker&#10;on page seo&#10;backlink analysis"></textarea>
+    </div>
+
+    <div class="grid-2">
+      <div class="form-group">
+        <label>Search Engine</label>
+        <input type="text" id="searchEngine" value="Google" readonly style="cursor:default;opacity:0.7;" />
+      </div>
+      <div class="form-group">
+        <label>Country / Region</label>
+        <select id="country" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--text);font-family:var(--font-mono);font-size:14px;outline:none;">
+          <option value="PK">🇵🇰 Pakistan</option>
+          <option value="US">🇺🇸 United States</option>
+          <option value="GB">🇬🇧 United Kingdom</option>
+          <option value="IN">🇮🇳 India</option>
+          <option value="AE">🇦🇪 UAE</option>
+          <option value="CA">🇨🇦 Canada</option>
+          <option value="AU">🇦🇺 Australia</option>
+          <option value="DE">🇩🇪 Germany</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="note">
+      <span>⚠️</span>
+      <span>This tool <strong>simulates</strong> keyword position checking using a smart ranking algorithm. Live SERP data requires a paid API (e.g. ValueSERP, DataForSEO). Simulated results are realistic for demo & portfolio purposes.</span>
+    </div>
+
+    <div id="errorBox" class="error-box"></div>
+
+    <div id="progressWrap" class="progress-wrap" style="display:none;">
+      <div class="progress-label">
+        <span id="progressText">Analyzing keywords…</span>
+        <span id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="checkBtn" onclick="runCheck()">
+      <span>Check Rankings</span>
+    </button>
+  </div>
+
+  <!-- How it works -->
+  <div class="card">
+    <div class="card-title">📖 How It Works</div>
+    <div class="how-grid">
+      <div class="how-item">
+        <div class="how-icon">📝</div>
+        <div class="how-title">Enter Keywords</div>
+        <div class="how-desc">Add your target keywords one per line</div>
+      </div>
+      <div class="how-item">
+        <div class="how-icon">🌐</div>
+        <div class="how-title">Set Your URL</div>
+        <div class="how-desc">Input the domain you want to track</div>
+      </div>
+      <div class="how-item">
+        <div class="how-icon">⚡</div>
+        <div class="how-title">Simulate SERP</div>
+        <div class="how-desc">Tool runs position analysis per keyword</div>
+      </div>
+      <div class="how-item">
+        <div class="how-icon">📊</div>
+        <div class="how-title">Get Results</div>
+        <div class="how-desc">View rank, status & export CSV</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results-section">
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <span>📈 Results</span>
+      </div>
+
+      <!-- Summary stats -->
+      <div class="summary-grid" id="summaryGrid"></div>
+
+      <!-- Table -->
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Keyword</th>
+              <th data-tip="Position on SERP (1–100)">Position</th>
+              <th>Status</th>
+              <th>Search Volume</th>
+              <th>Difficulty</th>
+              <th>Ranking URL</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Actions -->
+      <div class="action-row">
+        <button class="btn btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="btn btn-sm" onclick="exportJSON()">⬇ Export JSON</button>
+        <button class="btn btn-sm" onclick="clearResults()">✕ Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Built with ❤️ for <a href="#">iCreativez Internship</a> &nbsp;·&nbsp; Keyword Position Checker v1.0
+  </div>
+
+</div>
+
+<script>
+  // ─── Helpers ─────────────────────────────────────────────────────────────
+  let resultsData = [];
+
+  function getKeywords() {
+    return document.getElementById('keywords').value
+      .split('\n')
+      .map(k => k.trim())
+      .filter(k => k.length > 0)
+      .slice(0, 20);
+  }
+
+  function getDomain(url) {
+    try {
+      return new URL(url).hostname.replace('www.', '');
+    } catch {
+      return url.replace(/https?:\/\/(www\.)?/i, '').split('/')[0];
+    }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorBox');
+    el.textContent = '⚠ ' + msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 4000);
+  }
+
+  // ─── Ranking Simulation ──────────────────────────────────────────────────
+  function simulateRank(keyword, domain) {
+    // Create a seeded-ish hash from keyword + domain
+    let seed = 0;
+    const str = keyword.toLowerCase() + domain.toLowerCase();
+    for (let i = 0; i < str.length; i++) {
+      seed = (seed * 31 + str.charCodeAt(i)) & 0xfffffff;
+    }
+    const rand = (seed % 1000) / 1000;
+
+    // Realistic distribution: 20% top-10, 30% 11-30, 25% 31-100, 25% not found
+    let position;
+    if (rand < 0.07) position = Math.ceil(rand * 142) % 3 + 1;        // 1-3
+    else if (rand < 0.20) position = Math.ceil(rand * 100) % 7 + 4;   // 4-10
+    else if (rand < 0.50) position = Math.ceil(rand * 200) % 20 + 11; // 11-30
+    else if (rand < 0.75) position = Math.ceil(rand * 300) % 70 + 31; // 31-100
+    else position = null; // Not in top 100
+
+    return position;
+  }
+
+  function simulateVolume(keyword) {
+    const len = keyword.length;
+    const volumes = [210, 480, 720, 1300, 2400, 4400, 8100, 14800, 22000, 40500];
+    const idx = Math.abs(keyword.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % volumes.length;
+    return volumes[idx].toLocaleString();
+  }
+
+  function simulateDifficulty(keyword) {
+    const score = (keyword.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 7) % 100;
+    if (score < 30) return { val: score, label: 'Easy', color: 'color-green' };
+    if (score < 60) return { val: score, label: 'Medium', color: 'color-yellow' };
+    return { val: score, label: 'Hard', color: 'color-red' };
+  }
+
+  function getRankClass(pos) {
+    if (pos === null) return 'rank-na';
+    if (pos <= 3)  return 'rank-top3';
+    if (pos <= 10) return 'rank-top10';
+    if (pos <= 30) return 'rank-top30';
+    return 'rank-low';
+  }
+
+  function getStatus(pos) {
+    if (pos === null) return `<span class="status-pill pill-red">✕ Not Found</span>`;
+    if (pos <= 10) return `<span class="status-pill pill-green">▲ Top 10</span>`;
+    if (pos <= 30) return `<span class="status-pill pill-yellow">~ Page 1-3</span>`;
+    return `<span class="status-pill pill-red">▼ Low Rank</span>`;
+  }
+
+  function buildRankingUrl(domain, keyword, position) {
+    if (position === null) return '<span style="color:var(--muted)">—</span>';
+    const paths = ['blog/', 'services/', 'solutions/', 'resources/', '', 'about/', 'products/'];
+    const slug = keyword.toLowerCase().replace(/\s+/g, '-');
+    const path = paths[Math.abs(keyword.charCodeAt(0)) % paths.length];
+    const url = `${domain}/${path}${slug}`;
+    return `<span class="url-cell" title="${url}">${url}</span>`;
+  }
+
+  // ─── Progress Simulation ─────────────────────────────────────────────────
+  async function animateProgress(total) {
+    const fill = document.getElementById('progressFill');
+    const pct  = document.getElementById('progressPct');
+    const txt  = document.getElementById('progressText');
+    const steps = ['Fetching SERP data…', 'Parsing results…', 'Calculating positions…', 'Finalizing report…'];
+
+    return new Promise(resolve => {
+      let i = 0;
+      const perStep = 100 / total;
+      const interval = setInterval(() => {
+        i++;
+        const p = Math.min(Math.round(i * perStep), 100);
+        fill.style.width = p + '%';
+        pct.textContent = p + '%';
+        txt.textContent = steps[Math.floor((p / 100) * steps.length)] || steps[steps.length - 1];
+        if (i >= total) { clearInterval(interval); resolve(); }
+      }, 120);
+    });
+  }
+
+  // ─── Main Check ──────────────────────────────────────────────────────────
+  async function runCheck() {
+    const urlInput = document.getElementById('targetUrl').value.trim();
+    const keywords = getKeywords();
+
+    if (!urlInput) return showError('Please enter a target URL or domain.');
+    if (keywords.length === 0) return showError('Please enter at least one keyword.');
+
+    const domain = getDomain(urlInput);
+    const btn = document.getElementById('checkBtn');
+    btn.innerHTML = '<div class="spinner"></div><span>Checking…</span>';
+    btn.disabled = true;
+
+    document.getElementById('progressWrap').style.display = 'block';
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('results-section').classList.remove('show');
+
+    await animateProgress(keywords.length);
+
+    // Build results
+    resultsData = keywords.map((kw, idx) => {
+      const position   = simulateRank(kw, domain);
+      const volume     = simulateVolume(kw);
+      const difficulty = simulateDifficulty(kw);
+      return { idx: idx + 1, keyword: kw, position, volume, difficulty, domain };
+    });
+
+    renderResults(domain);
+
+    document.getElementById('progressWrap').style.display = 'none';
+    btn.innerHTML = '<span>Check Rankings</span>';
+    btn.disabled = false;
+  }
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+  function renderResults(domain) {
+    // Summary
+    const total    = resultsData.length;
+    const top3     = resultsData.filter(r => r.position !== null && r.position <= 3).length;
+    const top10    = resultsData.filter(r => r.position !== null && r.position <= 10).length;
+    const notFound = resultsData.filter(r => r.position === null).length;
+    const avgPos   = resultsData.filter(r => r.position !== null).length
+      ? Math.round(resultsData.filter(r => r.position !== null).reduce((a, r) => a + r.position, 0) / (total - notFound))
+      : '—';
+
+    document.getElementById('summaryGrid').innerHTML = `
+      <div class="stat-box">
+        <div class="stat-value color-accent">${total}</div>
+        <div class="stat-label">Keywords Checked</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value color-green">${top3}</div>
+        <div class="stat-label">Top 3 Rankings</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value color-accent">${top10}</div>
+        <div class="stat-label">Top 10 Rankings</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value color-red">${notFound}</div>
+        <div class="stat-label">Not Ranking</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value color-yellow">${avgPos}</div>
+        <div class="stat-label">Avg. Position</div>
+      </div>
+    `;
+
+    // Table rows
+    document.getElementById('resultsBody').innerHTML = resultsData.map(r => `
+      <tr>
+        <td style="color:var(--muted)">${r.idx}</td>
+        <td class="kw-cell">${escapeHtml(r.keyword)}</td>
+        <td>
+          <span class="rank-badge ${getRankClass(r.position)}">
+            ${r.position !== null ? r.position : '—'}
+          </span>
+        </td>
+        <td>${getStatus(r.position)}</td>
+        <td style="color:var(--muted)">${r.volume}</td>
+        <td class="${r.difficulty.color}">${r.difficulty.val} <span style="font-size:11px;opacity:0.7">(${r.difficulty.label})</span></td>
+        <td>${buildRankingUrl(r.domain, r.keyword, r.position)}</td>
+      </tr>
+    `).join('');
+
+    document.getElementById('results-section').classList.add('show');
+    document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  // ─── Export ───────────────────────────────────────────────────────────────
+  function exportCSV() {
+    if (!resultsData.length) return;
+    const headers = ['#', 'Keyword', 'Position', 'Status', 'Search Volume', 'Difficulty', 'Score'];
+    const rows = resultsData.map(r => [
+      r.idx,
+      `"${r.keyword}"`,
+      r.position ?? 'Not Found',
+      r.position ? (r.position <= 10 ? 'Top 10' : r.position <= 30 ? 'Page 2-3' : 'Low Rank') : 'Not Found',
+      r.volume,
+      r.difficulty.label,
+      r.difficulty.val
+    ]);
+    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+    download('keyword-positions.csv', csv, 'text/csv');
+  }
+
+  function exportJSON() {
+    if (!resultsData.length) return;
+    const data = resultsData.map(r => ({
+      keyword: r.keyword,
+      position: r.position,
+      status: r.position ? (r.position <= 10 ? 'Top 10' : r.position <= 30 ? 'Page 2-3' : 'Low Rank') : 'Not Found',
+      searchVolume: r.volume,
+      difficulty: r.difficulty.label,
+      difficultyScore: r.difficulty.val
+    }));
+    download('keyword-positions.json', JSON.stringify(data, null, 2), 'application/json');
+  }
+
+  function download(filename, content, type) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type }));
+    a.download = filename;
+    a.click();
+  }
+
+  function clearResults() {
+    resultsData = [];
+    document.getElementById('results-section').classList.remove('show');
+    document.getElementById('keywords').value = '';
+    document.getElementById('targetUrl').value = '';
+  }
+
+  // Allow Enter key to trigger check from URL input
+  document.getElementById('targetUrl').addEventListener('keydown', e => {
+    if (e.key === 'Enter') runCheck();
+  });
+</script>
+</body>
+</html>
